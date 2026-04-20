@@ -1,0 +1,23 @@
+[
+    {
+        "id": 1,
+        "nimi": "HTML",
+        "kuvaus": "HTML on merkkauskieli, jolla määritellään nettisivun rakenne."
+    },
+    {
+        "id": 2,
+        "nimi": "CSS",
+        "kuvaus": "CSS-kielellä määritellään nettisivun ulkoasu."
+    },
+    {
+        "id": 3,
+        "nimi": "Javascript",
+        "kuvaus": "Javascript lisää dynaamista toiminnallisuutta sekä selaimessa että palvelimella."
+    },
+    {
+        "id": 4,
+        "nimi": "PHP",
+        "kuvaus": "PHP on vain palvelinpuolen kieli."
+    }
+]
+
