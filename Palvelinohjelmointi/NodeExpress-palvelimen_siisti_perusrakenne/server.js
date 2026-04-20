@@ -10,7 +10,6 @@ import config from "./config.json" with { type: "json" };
 const app = express();
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
-// ---------------- MIDDLEWARE ----------------
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
@@ -155,7 +154,6 @@ app.post("/update-ticket/:id", requireLogin, async (req, res) => {
   }
 });
 
-// ---------------- START ----------------
 app.listen(config.port, config.host, () => {
   console.log(`Server running at http://${config.host}:${config.port}`);
 });
