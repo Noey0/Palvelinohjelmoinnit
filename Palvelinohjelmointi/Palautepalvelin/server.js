@@ -4,10 +4,12 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 
 // Palaute-data REST-apia varten
-import feedback from "./feedback_mock.json" with { type: "json" };
+import feedbackData from "./feedback_mock.json" with { type: "json" };
 
-const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
-const __dirname = path.dirname(__filename); // get the name of the directory
+let feedback = [...feedbackData];
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const host = "localhost";
 const port = 3000;
@@ -19,19 +21,23 @@ app.set("views", path.join(__dirname, "templates"));
 
 app.use("/styles", express.static("includes/styles"));
 
+// IMPORTANT: needed for REST JSON
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Polkumäärittelyt ejs-sivupohjia käyttäville web-sivuille
 app.get("/", (req, res) => {
   res.render("index");
 });
+
 app.get("/palautelomake", (req, res) => {
   res.render("palaute");
 });
+
 app.post("/palautelomake", async (req, res) => {
   let name = req.body.name;
   let email = req.body.email;
-  let feedback = req.body.feedback;
+  let feedbackText = req.body.feedback;
 
   fs.readFile("data.json", "utf8", function (err, dataString) {
     if (err) {
@@ -52,7 +58,7 @@ app.post("/palautelomake", async (req, res) => {
       data.push({
         name: name,
         email: email,
-        feedback: feedback,
+        feedback: feedbackText,
       });
 
       fs.writeFile(
@@ -73,28 +79,63 @@ app.post("/palautelomake", async (req, res) => {
   });
 });
 
-// REST-palvelimen polut
+// GET all
 app.get("/palaute/", (req, res) => {
-  // Palauttaa kaikki palautteet
-
   res.json(feedback);
 });
+
+// GET one
 app.get("/palaute/:id", (req, res) => {
-  // Palauttaa yhden palautteen
   const id = parseInt(req.params.id);
   const item = feedback.find((f) => f.id === id);
+
   if (item) res.json(item);
   else res.status(404).json({ error: "Palaute ei löytynyt" });
 });
+
+// POST new
 app.post("/palaute/uusi", (req, res) => {
-  // Lisää uuden palautteen. Palaute pyynnön body:ssä
-});
-app.put("/palaute/:id", (req, res) => {
-  // Muokkaa tietyn palautteen sisältöä. (Miksi tällainen on?)
-});
-app.delete("/palaute/:id", (req, res) => {
-  // Poistaa tietyn palautteen. (Miksi tällainen on?)
+  if (!req.body || Object.keys(req.body).length === 0) {
+    return res.status(400).json({ error: "Tyhjä pyyntö" });
+  }
+
+  const newItem = {
+    id: Date.now(),
+    ...req.body,
+  };
+
+  feedback.push(newItem);
+  res.status(201).json(newItem);
 });
 
-// Aina viimeisenä palvelimen käynnistys
+// PUT update
+app.put("/palaute/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = feedback.findIndex((f) => f.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Palaute ei löytynyt" });
+  }
+
+  feedback[index] = {
+    ...feedback[index],
+    ...req.body,
+  };
+
+  res.json(feedback[index]);
+});
+
+// DELETE
+app.delete("/palaute/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  const index = feedback.findIndex((f) => f.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Palaute ei löytynyt" });
+  }
+
+  const deleted = feedback.splice(index, 1);
+  res.json(deleted[0]);
+});
+
 app.listen(port, host, () => console.log(`${host}:${port} kuuntelee...`));
