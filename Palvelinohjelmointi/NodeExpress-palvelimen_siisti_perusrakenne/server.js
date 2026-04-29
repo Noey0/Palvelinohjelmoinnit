@@ -4,7 +4,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import session from "express-session";
 import bcrypt from "bcrypt";
-
 import config from "./config.json" with { type: "json" };
 
 const app = express();
@@ -25,7 +24,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔐 Guard
+// Require login
 const requireLogin = (req, res, next) => {
   if (!req.session.user) {
     return res.redirect("/login");
@@ -33,13 +32,20 @@ const requireLogin = (req, res, next) => {
   next();
 };
 
-// ---------------- VIEW ENGINE ----------------
+// Require admin (extra protection)
+const requireAdmin = (req, res, next) => {
+  if (!req.session.user || req.session.user.admin !== 1) {
+    return res.status(403).send("Forbidden");
+  }
+  next();
+};
+
+// VIEW ENGINE
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
-
 app.use("/inc", express.static(path.join(__dirname, "includes")));
 
-// ---------------- LOGIN ----------------
+// LOGIN
 app.get("/login", (req, res) => {
   res.render("login", { error: null });
 });
@@ -50,7 +56,8 @@ app.post("/login", async (req, res) => {
   try {
     const user = await db.findAdminUser(identifier);
 
-    if (!user) {
+    // Only admins allowed
+    if (!user || user.admin !== 1 || !user.password) {
       return res.render("login", { error: "Invalid credentials" });
     }
 
@@ -60,10 +67,11 @@ app.post("/login", async (req, res) => {
       return res.render("login", { error: "Invalid credentials" });
     }
 
-    // ✅ Store minimal session data
+    // Store session
     req.session.user = {
       id: user.id,
       email: user.email,
+      admin: user.admin,
     };
 
     res.redirect("/feedback");
@@ -79,7 +87,7 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// ---------------- ROUTES ----------------
+//ROUTES
 
 app.get("/", requireLogin, (req, res) => {
   res.redirect("/feedback");
@@ -90,17 +98,19 @@ app.get("/feedback", requireLogin, async (req, res) => {
   res.render("feedback", { rows });
 });
 
-app.get("/customers", requireLogin, async (req, res) => {
+//  admin only
+app.get("/customers", requireAdmin, async (req, res) => {
   const rows = await db.getCustomers();
   res.render("customers", { rows });
 });
 
-app.get("/tickets", requireLogin, async (req, res) => {
+//  admin only
+app.get("/tickets", requireAdmin, async (req, res) => {
   const rows = await db.getTickets();
   res.render("tickets", { rows });
 });
 
-app.get("/support_ticket", requireLogin, async (req, res) => {
+app.get("/support_ticket", requireAdmin, async (req, res) => {
   try {
     const ticketId = req.query.id;
 
@@ -126,7 +136,7 @@ app.get("/support_ticket", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/add_reply", requireLogin, async (req, res) => {
+app.post("/add_reply", requireAdmin, async (req, res) => {
   try {
     const { ticket_id, message } = req.body;
     const userId = req.session.user.id;
@@ -144,7 +154,7 @@ app.post("/add_reply", requireLogin, async (req, res) => {
   }
 });
 
-app.post("/update-ticket/:id", requireLogin, async (req, res) => {
+app.post("/update-ticket/:id", requireAdmin, async (req, res) => {
   try {
     await db.updateTicketStatus(req.params.id, req.body.status);
     res.redirect(`/support_ticket?id=${req.params.id}`);
