@@ -42,7 +42,7 @@ const getCustomers = async () => {
   const c = await getConnection();
   try {
     const [rows] = await c.execute(`
-      SELECT 
+      SELECT
         c.name AS company_name,
         su.id AS user_id,
         su.fullname,
@@ -80,7 +80,6 @@ const getTicketById = async (id) => {
   }
 };
 
-// FIXED admin detection
 const getTicketMessages = async (ticketId) => {
   const c = await getConnection();
   try {

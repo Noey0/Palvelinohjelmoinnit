@@ -87,27 +87,41 @@ app.get("/logout", (req, res) => {
   });
 });
 
-//ROUTES
-
+// ROUTES
 app.get("/", requireLogin, (req, res) => {
   res.redirect("/feedback");
 });
 
 app.get("/feedback", requireLogin, async (req, res) => {
-  const rows = await db.getFeedback();
-  res.render("feedback", { rows });
+  try {
+    const rows = await db.getFeedback();
+    res.render("feedback", { rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error loading feedback");
+  }
 });
 
-//  admin only
+// admin only
 app.get("/customers", requireAdmin, async (req, res) => {
-  const rows = await db.getCustomers();
-  res.render("customers", { rows });
+  try {
+    const rows = await db.getCustomers();
+    res.render("customers", { rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error loading customers");
+  }
 });
 
-//  admin only
+// admin only
 app.get("/tickets", requireAdmin, async (req, res) => {
-  const rows = await db.getTickets();
-  res.render("tickets", { rows });
+  try {
+    const rows = await db.getTickets();
+    res.render("tickets", { rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error loading tickets");
+  }
 });
 
 app.get("/support_ticket", requireAdmin, async (req, res) => {
