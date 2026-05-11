@@ -23,20 +23,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// AUTH MIDDLEWARE
 const requireLogin = (req, res, next) => {
   if (!req.session.user) return res.redirect("/login");
   next();
 };
 
 const requireAdmin = (req, res, next) => {
-  if (!req.session.user?.admin) {
+  if (!req.session.user || req.session.user.admin !== 1) {
     return res.status(403).send("Forbidden");
   }
   next();
 };
 
-// VIEW SETUP
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 app.use("/inc", express.static(path.join(__dirname, "includes")));
@@ -46,26 +44,15 @@ app.get("/login", (req, res) => res.render("login", { error: null }));
 
 app.post("/login", async (req, res) => {
   const { identifier, password } = req.body;
-
   try {
     const user = await db.findAdminUser(identifier);
-
-    if (!user) {
+    if (!user || user.admin !== 1)
       return res.render("login", { error: "Invalid credentials" });
-    }
 
     const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.render("login", { error: "Invalid credentials" });
 
-    if (!match) {
-      return res.render("login", { error: "Invalid credentials" });
-    }
-
-    req.session.user = {
-      id: user.id,
-      email: user.email,
-      admin: user.admin,
-    };
-
+    req.session.user = { id: user.id, email: user.email, admin: user.admin };
     res.redirect("/feedback");
   } catch (error) {
     res.status(500).send("Login failed");
@@ -76,7 +63,7 @@ app.get("/logout", (req, res) => {
   req.session.destroy(() => res.redirect("/login"));
 });
 
-// ROUTES
+// CONTENT ROUTES
 app.get("/", requireLogin, (req, res) => res.redirect("/feedback"));
 
 app.get("/feedback", requireLogin, async (req, res) => {
@@ -97,22 +84,18 @@ app.get("/tickets", requireAdmin, async (req, res) => {
 app.get("/support_ticket", requireAdmin, async (req, res) => {
   const ticketId = req.query.id;
   const ticket = await db.getTicketById(ticketId);
-
   if (!ticket) return res.status(404).send("Ticket not found");
-
   const messages = await db.getTicketMessages(ticketId);
-
   res.render("support_ticket", { ticket, messages });
 });
 
 app.post("/add_reply", requireAdmin, async (req, res) => {
   const { ticket_id, message } = req.body;
-
   await db.addTicketMessage(ticket_id, req.session.user.id, message);
-
   res.redirect(`/support_ticket?id=${ticket_id}`);
 });
 
+// TÄMÄ PÄIVITTÄÄ TILAN
 app.post("/update-ticket/:id", requireAdmin, async (req, res) => {
   try {
     await db.updateTicketStatus(req.params.id, req.body.status);
